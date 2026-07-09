@@ -45,12 +45,14 @@
       equipmentList = await res.json();
       const select = document.getElementById("equipment");
       select.innerHTML = "";
-      equipmentList.forEach(item => {
-        const opt = document.createElement("option");
-        opt.value = item.id;
-        opt.textContent = `${item.name} (PHP ${item.daily_rate}/day)`;
-        select.appendChild(opt);
-      });
+      equipmentList
+        .filter(item => item.status === "available")
+        .forEach(item => {
+          const opt = document.createElement("option");
+          opt.value = item.id;
+          opt.textContent = `${item.name} (PHP ${item.daily_rate}/day)`;
+          select.appendChild(opt);
+        });
     }
 
     function selectedEquipment() {
@@ -113,6 +115,7 @@
 
     document.getElementById("equipment").addEventListener("change", updateTotal);
     document.getElementById("from").addEventListener("change", updateTotal);
+    document.getElementById("to").addEventListener("change", updateTotal);
     document.getElementById("book").addEventListener("click", createBooking);
 
     loadEquipment();

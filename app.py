@@ -26,7 +26,7 @@ app = Flask(__name__)
 EQUIPMENT = [
     {"id": 1, "name": "Canon DSLR Camera", "daily_rate": 1500.0, "status": "available"},
     {"id": 2, "name": "Cordless Drill",     "daily_rate": 480.0,  "status": "available"},
-    {"id": 3, "name": "HD Projector",       "daily_rate": 900.0, "status": "maintenance"},
+    {"id": 3, "name": "HD Projector",       "daily_rate": 900.0, "status": "available"},
     {"id": 4, "name": "PA Speaker System",  "daily_rate": 1800.0, "status": "available"},
 ]
 
@@ -61,13 +61,17 @@ def parse_date(value):
 
 
 def rental_days(from_date, to_date):
+    """This is to make sure that the Start date and End date are not inverted."""
+    if to_date < from_date:
+        raise ValueError("End date cannot be before start date")
+    
     """Number of days a rental covers."""
-    return (to_date - from_date).days
+    return (to_date - from_date).days + 1
 
 
 def dates_overlap(start_a, end_a, start_b, end_b):
-    """True if date range A overlaps date range B."""
-    return start_b <= start_a <= end_b
+    """True if date range A overlaps date range B (inclusive)."""
+    return start_a <= end_b and start_b <= end_a
 
 
 def find_conflicting_booking(equipment_id, from_date, to_date, bookings):
@@ -98,7 +102,7 @@ def index():
 
 @app.route("/api/equipment")
 def list_equipment():
-    return jsonify(EQUIPMENT)
+    return jsonify([item for item in EQUIPMENT if item["status"] != "maintenance"])
 
 
 @app.route("/api/bookings")
@@ -114,6 +118,8 @@ def availability():
 
     available = []
     for item in EQUIPMENT:
+        if item["status"] != "available":
+            continue
         conflict = find_conflicting_booking(item["id"], from_date, to_date, bookings)
         if conflict is None:
             available.append(item)
@@ -127,6 +133,11 @@ def create_booking():
     equipment = get_equipment(data.get("equipment_id"))
     if equipment is None:
         return jsonify({"error": "Unknown equipment"}), 400
+
+    if equipment["status"] != "available":
+        return jsonify({
+            "error": f"{equipment['name']} is not available for booking"
+        }), 409
 
     from_date = parse_date(data["from_date"])
     to_date = parse_date(data["to_date"])
@@ -160,4 +171,4 @@ def create_booking():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(host="0.0.0.0", debug=True, port=5000)
